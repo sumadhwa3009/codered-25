@@ -97,11 +97,11 @@ spectrogram(y,hann(256),192,256,fs,'yaxis'); title('OUTPUT (Noise suppressed)');
 
 sgtitle(sprintf('Demo: %.1f dB suppression at 90°', suppression), 'FontWeight', 'bold');
 
-%% Play Audio (reduced volume)
+%% Play Audio
 fprintf('\nPlaying INPUT (speech + noise)...\n');
-soundsc(ref * 0.5, fs); pause(dur+0.3);
+soundsc(ref * 0.75, fs); pause(dur+0.3);
 fprintf('Playing OUTPUT (noise suppressed)...\n');
-soundsc(y * 0.5, fs);
+soundsc(y * 0.75, fs);
 
 fprintf('\n=== Demo Complete ===\n');
 
