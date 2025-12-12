@@ -10,11 +10,19 @@ fs = 16000; c = 343; dur = 2; N = dur*fs; t = (0:N-1)'/fs;
 num_mics = 6; r = 0.05;
 mic_pos = r * [cosd((0:5)*60)', sind((0:5)*60)'];
 
-%% Create Test Signals
-% Target: 500 Hz tone at 0°
-% Interference: 1500 Hz tone at 90°
-target = sin(2*pi*500*t);
-interf = 0.8 * sin(2*pi*1500*t);
+%% Create Test Signals (Natural sounding - easier on ears)
+% Target: Speech-like harmonics at 0°
+f0 = 200;
+target = zeros(N, 1);
+for h = 1:6
+    target = target + sin(2*pi*f0*h*t + rand*2*pi) / h;
+end
+target = target .* (0.5 + 0.4*sin(2*pi*3*t));  % AM modulation
+target = 0.5 * target / max(abs(target));      % 50% volume
+
+% Interference: Soft filtered noise at 90°
+interf = bandpass(randn(N, 1), [400 2000], fs);
+interf = 0.4 * interf / max(abs(interf));      % 40% volume
 
 %% Apply Delays
 mic_sig = zeros(N, num_mics);
@@ -82,18 +90,18 @@ fprintf('SUPPRESSION:       %.1f dB\n', suppression);
 figure('Position',[100 100 900 400],'Color','w');
 
 subplot(1,2,1);
-spectrogram(ref,hann(256),192,256,fs,'yaxis'); title('INPUT (500Hz + 1500Hz mixed)'); ylim([0 4]);
+spectrogram(ref,hann(256),192,256,fs,'yaxis'); title('INPUT (Speech + Noise mixed)'); ylim([0 4]);
 
 subplot(1,2,2);
-spectrogram(y,hann(256),192,256,fs,'yaxis'); title('OUTPUT (1500Hz suppressed)'); ylim([0 4]);
+spectrogram(y,hann(256),192,256,fs,'yaxis'); title('OUTPUT (Noise suppressed)'); ylim([0 4]);
 
 sgtitle(sprintf('Demo: %.1f dB suppression at 90°', suppression), 'FontWeight', 'bold');
 
-%% Play Audio
-fprintf('\nPlaying INPUT (both tones)...\n');
-soundsc(ref, fs); pause(dur+0.3);
-fprintf('Playing OUTPUT (interference reduced)...\n');
-soundsc(y, fs);
+%% Play Audio (reduced volume)
+fprintf('\nPlaying INPUT (speech + noise)...\n');
+soundsc(ref * 0.5, fs); pause(dur+0.3);
+fprintf('Playing OUTPUT (noise suppressed)...\n');
+soundsc(y * 0.5, fs);
 
 fprintf('\n=== Demo Complete ===\n');
 
