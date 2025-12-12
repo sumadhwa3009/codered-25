@@ -1,40 +1,41 @@
-# Audiovisual Zooming - Compact
+# Audiovisual Zooming
 
-**"What You See Is What You Hear"** - GEV Beamformer Implementation
+**"What You See Is What You Hear"** - GEV Beamformer (Nair et al., 2019)
+
+## Files
+
+| File | Description |
+|------|-------------|
+| `demo.m` | Quick test (2 sec, simple tones) |
+| `audiovisual_zoom_compact.m` | Full simulation (3 sec, realistic signals) |
 
 ## Quick Start
 
 ```matlab
-audiovisual_zoom_compact
+demo                          % Fast test
+audiovisual_zoom_compact      % Full simulation
 ```
-
-## What It Does
-
-- Generates synthetic target (0°) + interference (90°)
-- Runs GEV beamformer with ±15° FOV
-- Shows spectrograms, beam patterns
-- Plays input (noisy) then output (zoomed)
-- Saves `in_noisy.wav` and `out_zoomed.wav`
 
 ## Requirements
 
 - MATLAB with **Signal Processing Toolbox**
+- Check: run `ver` and look for "Signal Processing Toolbox"
 
-## Algorithm (per frequency bin)
+## What It Does
 
-1. **STFT** → time-frequency representation
-2. **Covariance** → spatial statistics
-3. **MPDR** → power vs direction
-4. **Matrix Integration** → R_s (FOV) / R_n (outside)
-5. **GEV** → solve R_s·w = λ·R_n·w → max eigenvector
-6. **ISTFT** → back to time domain
+1. Simulates 6-mic circular array
+2. Target at 0°, interference at 90°
+3. GEV beamformer focuses on ±15° FOV
+4. Shows spectrograms + beam pattern
+5. Plays input (noisy) then output (cleaned)
 
-## Using Real Data
+## Algorithm
 
-Edit `audiovisual_zoom_compact.m`:
-- Replace synthetic signal generation with:
-```matlab
-[mic_sig, fs] = audioread('array_input.wav');
-N = size(mic_sig, 1);
 ```
-- Place 6-channel `array_input.wav` in same folder
+STFT → Covariance → MPDR Power → Matrix Integration → GEV → ISTFT
+```
+
+## Expected Output
+
+- **Suppression**: 15-25 dB at 90° interference
+- **Beam pattern**: Main lobe at 0°, null toward 90°
