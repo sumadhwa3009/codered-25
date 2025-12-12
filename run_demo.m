@@ -1,37 +1,27 @@
 %% DEMO - Audiovisual Zooming (7-Mic Array)
-%  Mic Layout: 6 circular + 1 center
-%  mic0 (0°), mic1 (60°), mic2 (120°), mic3 (180°), mic4 (240°), mic5 (300°), mic6 (center)
 
 clear; close all; clc;
 fprintf('=== GEV Beamformer Demo (7-Mic Array) ===\n');
 
 %% Setup
-fs = 16000; c = 343; dur = 2; N = dur*fs; t = (0:N-1)'/fs;
-
-% 7-mic array: 6 circular + 1 center
+fs = 16000;
+c = 343; dur = 2; N = dur*fs; t = (0:N-1)'/fs;
 num_mics = 7;
-r = 0.05;  % 5 cm radius for circular mics
-
-% Mic positions [x, y] in meters
-% mic0-mic5: circular at 0°, 60°, 120°, 180°, 240°, 300°
-% mic6: center
+r = 0.05;
 mic_angles = [0, 60, 120, 180, 240, 300];  % degrees for circular mics
 mic_pos = zeros(num_mics, 2);
 for i = 1:6
     mic_pos(i, :) = r * [cosd(mic_angles(i)), sind(mic_angles(i))];
 end
-mic_pos(7, :) = [0, 0];  % Center mic
+mic_pos(7, :) = [0, 0];  
 
 fprintf('Array: 6 circular mics + 1 center mic\n');
 fprintf('Radius: %.0f cm\n', r*100);
 
 %% Create Signals
-% Target: Melody-like at 0°
 target = sin(2*pi*300*t) + 0.7*sin(2*pi*500*t) + 0.5*sin(2*pi*700*t);
 target = target .* (0.6 + 0.4*sin(2*pi*2*t));
 target = target / max(abs(target));
-
-% Interference: Buzzing noise at 90°
 interf = sin(2*pi*1200*t) + 0.8*sin(2*pi*1500*t) + 0.6*sin(2*pi*1800*t);
 interf = interf / max(abs(interf));
 
@@ -40,12 +30,11 @@ mic_sig = zeros(N, num_mics);
 freqs = (0:N-1)'*fs/N; freqs(freqs>fs/2) = freqs(freqs>fs/2)-fs;
 
 for m = 1:num_mics
-    tau_t = (mic_pos(m,1)*cosd(0) + mic_pos(m,2)*sind(0))/c;    % Target at 0°
-    tau_i = (mic_pos(m,1)*cosd(90) + mic_pos(m,2)*sind(90))/c;  % Interf at 90°
+    tau_t = (mic_pos(m,1)*cosd(0) + mic_pos(m,2)*sind(0))/c;    
+    tau_i = (mic_pos(m,1)*cosd(90) + mic_pos(m,2)*sind(90))/c;  
     mic_sig(:,m) = real(ifft(fft(target).*exp(-1j*2*pi*freqs*tau_t))) + ...
                    real(ifft(fft(interf).*exp(-1j*2*pi*freqs*tau_i))) + 0.01*randn(N,1);
 end
-
 %% STFT
 [S, f, ~] = stft(mic_sig, fs, 'Window', hann(256,'periodic'), 'OverlapLength', 192, 'FFTLength', 256);
 [~, nt, ~] = size(S);
@@ -60,7 +49,6 @@ for i = 1:length(bins)
     X = squeeze(S(b,:,:)).';
     R = (X*X')/nt + reg*eye(num_mics);
     
-    % Steering vectors for 7 mics
     V = exp(-1j*k*(mic_pos(:,1)*cosd(angles) + mic_pos(:,2)*sind(angles)));
     
     Ri = inv(R);
@@ -99,20 +87,16 @@ fprintf('Suppression: %.1f dB\n', suppression);
 
 %% Plot
 figure('Position',[100 100 1000 400],'Color','w');
-
-subplot(1,3,1);
-plot(mic_pos(1:6,1)*100, mic_pos(1:6,2)*100, 'bo', 'MarkerSize', 10, 'MarkerFaceColor', 'b');
-hold on;
 plot(mic_pos(7,1)*100, mic_pos(7,2)*100, 'ro', 'MarkerSize', 12, 'MarkerFaceColor', 'r');
 th = linspace(0,2*pi,100); plot(r*100*cos(th), r*100*sin(th), 'b--');
 axis equal; grid on; xlim([-8 8]); ylim([-8 8]);
 xlabel('X (cm)'); ylabel('Y (cm)');
 title('7-Mic Array'); legend('Circular', 'Center', 'Location', 'best');
 
-subplot(1,3,2);
+subplot(1,3,1);
 spectrogram(ref,128,96,128,fs,'yaxis'); title('INPUT'); ylim([0 3]);
 
-subplot(1,3,3);
+subplot(1,3,2);
 spectrogram(y,128,96,128,fs,'yaxis'); title('OUTPUT'); ylim([0 3]);
 
 sgtitle(sprintf('7-Mic GEV Demo: %.0f dB suppression', suppression), 'FontWeight','bold');
