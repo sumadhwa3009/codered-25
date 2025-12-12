@@ -2,32 +2,37 @@
 
 **"What You See Is What You Hear"** - GEV Beamformer (Nair et al., 2019)
 
+## Microphone Array
+
+**7-mic configuration** (6 circular + 1 center):
+
+| Mic | File | Position |
+|-----|------|----------|
+| mic0 | mic0_0deg.wav | Front (0°) |
+| mic1 | mic1_60deg.wav | Front-right (60°) |
+| mic2 | mic2_120deg.wav | Back-right (120°) |
+| mic3 | mic3_180deg.wav | Back (180°) |
+| mic4 | mic4_240deg.wav | Back-left (240°) |
+| mic5 | mic5_300deg.wav | Front-left (300°) |
+| mic6 | mic6_0deg.wav | Center |
+
 ## Files
 
 | File | Description |
 |------|-------------|
-| `demo.m` | Quick test (2 sec, simple tones) |
-| `audiovisual_zoom_compact.m` | Full simulation (3 sec, realistic signals) |
+| `run_demo.m` | Quick test (synthetic signals) |
+| `audiovisual_zoom_compact.m` | Full simulation |
 
 ## Quick Start
 
 ```matlab
-demo                          % Fast test
+run_demo                      % Fast demo
 audiovisual_zoom_compact      % Full simulation
 ```
 
 ## Requirements
 
 - MATLAB with **Signal Processing Toolbox**
-- Check: run `ver` and look for "Signal Processing Toolbox"
-
-## What It Does
-
-1. Simulates 6-mic circular array
-2. Target at 0°, interference at 90°
-3. GEV beamformer focuses on ±15° FOV
-4. Shows spectrograms + beam pattern
-5. Plays input (noisy) then output (cleaned)
 
 ## Algorithm
 
@@ -35,7 +40,4 @@ audiovisual_zoom_compact      % Full simulation
 STFT → Covariance → MPDR Power → Matrix Integration → GEV → ISTFT
 ```
 
-## Expected Output
-
-- **Suppression**: 15-25 dB at 90° interference
-- **Beam pattern**: Main lobe at 0°, null toward 90°
+Target at 0°, Interference at 90° → **15-25 dB suppression**

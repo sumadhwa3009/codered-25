@@ -1,11 +1,29 @@
-%% DEMO - Audiovisual Zooming (Fast Version)
+%% DEMO - Audiovisual Zooming (7-Mic Array)
+%  Mic Layout: 6 circular + 1 center
+%  mic0 (0°), mic1 (60°), mic2 (120°), mic3 (180°), mic4 (240°), mic5 (300°), mic6 (center)
+
 clear; close all; clc;
-fprintf('=== GEV Beamformer Demo ===\n');
+fprintf('=== GEV Beamformer Demo (7-Mic Array) ===\n');
 
 %% Setup
 fs = 16000; c = 343; dur = 2; N = dur*fs; t = (0:N-1)'/fs;
-num_mics = 6; r = 0.05;
-mic_pos = r * [cosd((0:5)*60)', sind((0:5)*60)'];
+
+% 7-mic array: 6 circular + 1 center
+num_mics = 7;
+r = 0.05;  % 5 cm radius for circular mics
+
+% Mic positions [x, y] in meters
+% mic0-mic5: circular at 0°, 60°, 120°, 180°, 240°, 300°
+% mic6: center
+mic_angles = [0, 60, 120, 180, 240, 300];  % degrees for circular mics
+mic_pos = zeros(num_mics, 2);
+for i = 1:6
+    mic_pos(i, :) = r * [cosd(mic_angles(i)), sind(mic_angles(i))];
+end
+mic_pos(7, :) = [0, 0];  % Center mic
+
+fprintf('Array: 6 circular mics + 1 center mic\n');
+fprintf('Radius: %.0f cm\n', r*100);
 
 %% Create Signals
 % Target: Melody-like at 0°
@@ -17,12 +35,13 @@ target = target / max(abs(target));
 interf = sin(2*pi*1200*t) + 0.8*sin(2*pi*1500*t) + 0.6*sin(2*pi*1800*t);
 interf = interf / max(abs(interf));
 
-%% Apply Delays
+%% Apply Delays to all 7 mics
 mic_sig = zeros(N, num_mics);
 freqs = (0:N-1)'*fs/N; freqs(freqs>fs/2) = freqs(freqs>fs/2)-fs;
+
 for m = 1:num_mics
-    tau_t = dot(mic_pos(m,:), [1 0])/c;
-    tau_i = dot(mic_pos(m,:), [0 1])/c;
+    tau_t = (mic_pos(m,1)*cosd(0) + mic_pos(m,2)*sind(0))/c;    % Target at 0°
+    tau_i = (mic_pos(m,1)*cosd(90) + mic_pos(m,2)*sind(90))/c;  % Interf at 90°
     mic_sig(:,m) = real(ifft(fft(target).*exp(-1j*2*pi*freqs*tau_t))) + ...
                    real(ifft(fft(interf).*exp(-1j*2*pi*freqs*tau_i))) + 0.01*randn(N,1);
 end
@@ -33,14 +52,17 @@ end
 bins = find(f >= 200 & f <= 3000);
 Out = mean(S, 3);
 
-%% GEV Beamforming (fast)
+%% GEV Beamforming
 fov = [-20 20]; angles = -180:30:150; reg = 1e-5;
 
 for i = 1:length(bins)
     b = bins(i); k = 2*pi*f(b)/c;
     X = squeeze(S(b,:,:)).';
     R = (X*X')/nt + reg*eye(num_mics);
+    
+    % Steering vectors for 7 mics
     V = exp(-1j*k*(mic_pos(:,1)*cosd(angles) + mic_pos(:,2)*sind(angles)));
+    
     Ri = inv(R);
     P = max(real(1./sum(conj(V).*(Ri*V),1)), 0);
     in_fov = angles >= fov(1) & angles <= fov(2);
@@ -55,14 +77,11 @@ end
 %% Reconstruct
 y = real(istft(Out, fs, 'Window', hann(256,'periodic'), 'OverlapLength', 192, 'FFTLength', 256));
 y = y(1:min(N,length(y)));
-
-% Boost output volume
-y = 2 * y / max(abs(y));  % 2x gain
-y = min(max(y, -1), 1);   % Clip to [-1, 1]
-
+y = 2 * y / max(abs(y));
+y = min(max(y, -1), 1);
 ref = mic_sig(:,1) / max(abs(mic_sig(:,1)));
 
-%% Quick beam pattern
+%% Beam pattern
 k1k = 2*pi*800/c; pa = -180:2:178;
 V1k = exp(-1j*k1k*(mic_pos(:,1)*cosd(pa) + mic_pos(:,2)*sind(pa)));
 [~,b1k] = min(abs(f-800)); X1k = squeeze(S(b1k,:,:)).';
@@ -79,18 +98,29 @@ suppression = bp_dB(pa==0) - bp_dB(pa==90);
 fprintf('Suppression: %.1f dB\n', suppression);
 
 %% Plot
-figure('Position',[100 100 900 350],'Color','w');
-subplot(1,2,1); spectrogram(ref,128,96,128,fs,'yaxis'); title('INPUT'); ylim([0 3]);
-subplot(1,2,2); spectrogram(y,128,96,128,fs,'yaxis'); title('OUTPUT (Boosted)'); ylim([0 3]);
-sgtitle(sprintf('GEV Demo: %.0f dB suppression', suppression), 'FontWeight','bold');
+figure('Position',[100 100 1000 400],'Color','w');
 
-%% PLAY AUDIO
-fprintf('\n>>> Playing INPUT (mixed)...\n');
-sound(ref, fs);
-pause(dur + 0.5);
+subplot(1,3,1);
+plot(mic_pos(1:6,1)*100, mic_pos(1:6,2)*100, 'bo', 'MarkerSize', 10, 'MarkerFaceColor', 'b');
+hold on;
+plot(mic_pos(7,1)*100, mic_pos(7,2)*100, 'ro', 'MarkerSize', 12, 'MarkerFaceColor', 'r');
+th = linspace(0,2*pi,100); plot(r*100*cos(th), r*100*sin(th), 'b--');
+axis equal; grid on; xlim([-8 8]); ylim([-8 8]);
+xlabel('X (cm)'); ylabel('Y (cm)');
+title('7-Mic Array'); legend('Circular', 'Center', 'Location', 'best');
 
-fprintf('>>> Playing OUTPUT (LOUD)...\n');
-sound(y, fs);
-pause(dur + 0.5);
+subplot(1,3,2);
+spectrogram(ref,128,96,128,fs,'yaxis'); title('INPUT'); ylim([0 3]);
+
+subplot(1,3,3);
+spectrogram(y,128,96,128,fs,'yaxis'); title('OUTPUT'); ylim([0 3]);
+
+sgtitle(sprintf('7-Mic GEV Demo: %.0f dB suppression', suppression), 'FontWeight','bold');
+
+%% Play Audio
+fprintf('\n>>> Playing INPUT...\n');
+sound(ref, fs); pause(dur + 0.5);
+fprintf('>>> Playing OUTPUT...\n');
+sound(y, fs); pause(dur + 0.5);
 
 fprintf('\nDone!\n');

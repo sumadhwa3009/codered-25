@@ -16,9 +16,10 @@ fs          = 16000;        % Sampling frequency (Hz)
 duration    = 3;            % Signal duration (seconds)
 c           = 343;          % Speed of sound (m/s)
 
-% Array geometry: 6-mic Uniform Circular Array
-num_mics    = 6;
-radius      = 0.05;         % 5 cm radius
+% Array geometry: 7-mic array (6 circular + 1 center)
+% mic0 (0°), mic1 (60°), mic2 (120°), mic3 (180°), mic4 (240°), mic5 (300°), mic6 (center)
+num_mics    = 7;
+radius      = 0.05;         % 5 cm radius for circular mics
 
 % Processing settings
 fft_len     = 512;          % FFT length
@@ -37,10 +38,15 @@ reg = 1e-6;
 
 %% ======================= ARRAY GEOMETRY =================================
 
-mic_angles = (0:num_mics-1) * (360/num_mics);  % 0, 60, 120, 180, 240, 300
-mic_pos = radius * [cosd(mic_angles)', sind(mic_angles)'];
+% 6 circular mics at 0°, 60°, 120°, 180°, 240°, 300° + 1 center mic
+mic_angles = [0, 60, 120, 180, 240, 300];  % Circular mic angles
+mic_pos = zeros(num_mics, 2);
+for i = 1:6
+    mic_pos(i, :) = radius * [cosd(mic_angles(i)), sind(mic_angles(i))];
+end
+mic_pos(7, :) = [0, 0];  % Center microphone
 
-fprintf('Array: %d mics, %.0f cm radius\n', num_mics, radius*100);
+fprintf('Array: %d mics (6 circular + 1 center), %.0f cm radius\n', num_mics, radius*100);
 fprintf('Target: %d°  |  Interference: %d°  |  FOV: [%d°, %d°]\n\n', ...
     target_dir, interf_dir, fov(1), fov(2));
 
